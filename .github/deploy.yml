@@ -1,0 +1,37 @@
+name: Build and Release
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    tags:
+      - "v*"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Build Docker image
+        run: docker build -t cicd-image -f .devcontainer/Dockerfile .
+
+      - name: Build project inside Docker
+        run: |
+          docker run --rm \
+            -v ${{ github.workspace }}:/project \
+            -w /project \
+            cicd-image \
+            bash -c "cmake --preset Test && cmake --build --preset app-test"
+
+      - name: Upload firmware artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: firmware
+          path: |
+            build/Test/*.elf
+            build/Test/*.uf2
+            build/Test/*.bin
